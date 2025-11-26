@@ -162,8 +162,8 @@ spec:
     - protocol: TCP
       port: 5000
       targetPort: 5000
-  # Tipe LoadBalancer (Sesuai permintaan)
-  type: LoadBalancer
+  # Di OpenShift, Route akan mengambil alih fungsi LoadBalancer.
+  type: ClusterIP 
 
 ---
 # ===================================================================
@@ -206,7 +206,54 @@ spec:
     app: frontend
   ports:
     - protocol: TCP
-      port: 8080        # Port yang diakses user
-      targetPort: 80    # Port container aplikasi
-  # Tipe LoadBalancer (Sesuai permintaan)
-  type: LoadBalancer
+      port: 8080 # Port yang diakses service
+      targetPort: 80 # Port container aplikasi
+  # Di OpenShift, Route akan mengambil alih fungsi LoadBalancer.
+  type: ClusterIP
+
+---
+# ===================================================================
+# 6. ROUTE TIER (OpenShift Routing)
+# ===================================================================
+
+# 6A. Route untuk Frontend (Port 8080/80)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: frontend-route
+  namespace: rs-app
+spec:
+  # Ganti 'frontend-rs-app.apps-crc.testing' sesuai dengan domain CRC Anda
+  # host: frontend-rs-app.apps-crc.testing
+  to:
+    kind: Service
+    name: frontend-svc
+  port:
+    # Target port yang diekspos oleh Service frontend
+    targetPort: 8080 
+  # Konfigurasi TLS
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+---
+
+# 6B. Route untuk Backend (Port 5000)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: backend-route
+  namespace: rs-app
+spec:
+  # Ganti 'backend-rs-app.apps-crc.testing' sesuai dengan domain CRC Anda
+  # host: backend-rs-app.apps-crc.testing
+  to:
+    kind: Service
+    name: backend
+  port:
+    # Target port yang diekspos oleh Service backend
+    targetPort: 5000 
+  # Konfigurasi TLS
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
