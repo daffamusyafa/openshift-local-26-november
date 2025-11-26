@@ -17,8 +17,7 @@ metadata:
   name: backend-config
   namespace: rs-app
 data:
-  # PGHOST harus menunjuk ke Service DB
-  PGHOST: "db-svc" 
+  PGHOST: "db-svc"
   PGUSER: "admin"
   PGDATABASE: "rs_db"
   PGPORT: "5432"
@@ -83,7 +82,7 @@ spec:
       labels:
         app: db
     spec:
-      # PERBAIKAN 1: Menambahkan fsGroup untuk mengatasi 'Permission denied' pada volume
+      # PERBAIKAN DB: Menambahkan fsGroup untuk mengatasi 'Permission denied' pada volume
       securityContext: 
         fsGroup: 1000660000 
       containers:
@@ -116,7 +115,7 @@ spec:
     - protocol: TCP
       port: 5432
       targetPort: 5432
-  type: ClusterIP # PERBAIKAN: Gunakan ClusterIP
+  type: ClusterIP
 
 ---
 # ===================================================================
@@ -166,7 +165,7 @@ spec:
     - protocol: TCP
       port: 5000
       targetPort: 5000
-  type: ClusterIP # PERBAIKAN: Gunakan ClusterIP
+  type: ClusterIP 
 
 ---
 # ===================================================================
@@ -196,6 +195,14 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
+          # PERBAIKAN FRONTEND: Mount EmptyDir untuk cache Nginx
+          volumeMounts: 
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+      # Definisi Volume EmptyDir
+      volumes: 
+        - name: nginx-cache
+          emptyDir: {}
 
 ---
 # Frontend Service
@@ -209,9 +216,9 @@ spec:
     app: frontend
   ports:
     - protocol: TCP
-      port: 80      # PERBAIKAN 2: Port yang diekspos service
+      port: 80      # Port yang diekspos service
       targetPort: 80 # Port container aplikasi
-  type: ClusterIP # PERBAIKAN: Gunakan ClusterIP
+  type: ClusterIP 
 
 ---
 # ===================================================================
