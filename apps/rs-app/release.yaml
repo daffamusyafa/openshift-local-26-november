@@ -10,20 +10,21 @@ metadata:
 # ===================================================================
 # 2. CONFIGURATION & SECRETS
 # ===================================================================
-# ConfigMap untuk Backend (Non-sensitive data)
+# ConfigMap untuk Backend
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: backend-config
   namespace: rs-app
 data:
-  PGHOST: "db-svc"
+  # PGHOST harus menunjuk ke Service DB
+  PGHOST: "db-svc" 
   PGUSER: "admin"
   PGDATABASE: "rs_db"
   PGPORT: "5432"
 
 ---
-# Secret untuk Database (Sensitive data)
+# Secret Database
 apiVersion: v1
 kind: Secret
 metadata:
@@ -36,7 +37,7 @@ stringData:
   POSTGRES_DB: "rs_db"
 
 ---
-# Secret untuk Backend (Sensitive data)
+# Secret Backend
 apiVersion: v1
 kind: Secret
 metadata:
@@ -82,6 +83,9 @@ spec:
       labels:
         app: db
     spec:
+      # PERBAIKAN 1: Menambahkan fsGroup untuk mengatasi 'Permission denied' pada volume
+      securityContext: 
+        fsGroup: 1000660000 
       containers:
         - name: postgres
           image: postgres:15-alpine
@@ -112,7 +116,7 @@ spec:
     - protocol: TCP
       port: 5432
       targetPort: 5432
-  type: ClusterIP
+  type: ClusterIP # PERBAIKAN: Gunakan ClusterIP
 
 ---
 # ===================================================================
@@ -162,8 +166,7 @@ spec:
     - protocol: TCP
       port: 5000
       targetPort: 5000
-  # Di OpenShift, Route akan mengambil alih fungsi LoadBalancer.
-  type: ClusterIP 
+  type: ClusterIP # PERBAIKAN: Gunakan ClusterIP
 
 ---
 # ===================================================================
@@ -206,54 +209,45 @@ spec:
     app: frontend
   ports:
     - protocol: TCP
-      port: 8080 # Port yang diakses service
+      port: 80      # PERBAIKAN 2: Port yang diekspos service
       targetPort: 80 # Port container aplikasi
-  # Di OpenShift, Route akan mengambil alih fungsi LoadBalancer.
-  type: ClusterIP
+  type: ClusterIP # PERBAIKAN: Gunakan ClusterIP
 
 ---
 # ===================================================================
 # 6. ROUTE TIER (OpenShift Routing)
 # ===================================================================
 
-# 6A. Route untuk Frontend (Port 8080/80)
+# 6A. Route untuk Frontend
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: frontend-route
   namespace: rs-app
 spec:
-  # Ganti 'frontend-rs-app.apps-crc.testing' sesuai dengan domain CRC Anda
-  # host: frontend-rs-app.apps-crc.testing
   to:
     kind: Service
     name: frontend-svc
   port:
-    # Target port yang diekspos oleh Service frontend
-    targetPort: 8080 
-  # Konfigurasi TLS
+    targetPort: 80 # Target port yang diekspos oleh Service frontend
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
 
 ---
 
-# 6B. Route untuk Backend (Port 5000)
+# 6B. Route untuk Backend
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: backend-route
   namespace: rs-app
 spec:
-  # Ganti 'backend-rs-app.apps-crc.testing' sesuai dengan domain CRC Anda
-  # host: backend-rs-app.apps-crc.testing
   to:
     kind: Service
     name: backend
   port:
-    # Target port yang diekspos oleh Service backend
-    targetPort: 5000 
-  # Konfigurasi TLS
+    targetPort: 5000 # Target port yang diekspos oleh Service backend
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
